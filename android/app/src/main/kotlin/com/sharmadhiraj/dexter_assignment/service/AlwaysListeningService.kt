@@ -11,20 +11,28 @@ import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import com.sharmadhiraj.dexter_assignment.Dexter
-import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.io.RandomAccessFile
-import java.util.Timer
-import java.util.TimerTask
+import java.io.IOException
 
 class AlwaysListeningService : Service() {
 
 
-    private var isListening = false
-    private var audioRecord: AudioRecord? = null
-
-
-    private var timer: Timer? = null
+    private var recorder: AudioRecord? = null
+    private var sampleRate = 44100
+    private var channel = AudioFormat.CHANNEL_IN_STEREO
+    private var audioEncoding = AudioFormat.ENCODING_PCM_16BIT
+    private var bufferSize = AudioRecord.getMinBufferSize(
+        8000,
+        AudioFormat.CHANNEL_IN_MONO,
+        AudioFormat.ENCODING_PCM_16BIT
+    )
+    private var recordingThread: Thread? = null
+    private var isRecording = false
+    private val stopHandler = Handler(Looper.getMainLooper())
+    private val recordingDurationMilliseconds = 5500
+    private var tempRawFile = "temp_record.raw"
+    private val bpp = 16
 
     override fun onCreate() {
         super.onCreate()
@@ -34,11 +42,7 @@ class AlwaysListeningService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "Service started")
-        if (!isListening) {
-            startListening()
-        } else {
-//            stopListening()
-        }
+        startListening()
         return START_STICKY
     }
 
@@ -49,85 +53,164 @@ class AlwaysListeningService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "Service destroyed")
-        stopListening()
+        stopRecording(false)
     }
 
-    private fun startListening() {
-        isListening = true
-        Log.d(TAG, "Started listening")
-
-        val minBufferSize = AudioRecord.getMinBufferSize(
-            SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
-        )
-
-        // Check for audio recording permission
-
-
-        // Continue with audio recording setup
-        setupAudioRecording(minBufferSize)
-    }
 
     @SuppressLint("MissingPermission")
-    private fun setupAudioRecording(minBufferSize: Int) {
-        audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
-            SAMPLE_RATE,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            minBufferSize
-        )
-        audioRecord?.startRecording()
-
-        timer = Timer()
-        timer?.scheduleAtFixedRate(object : TimerTask() {
-            override fun run() {
-                if (isListening) {
-                    val buffer = ByteArray(minBufferSize)
-                    val bytesRead = audioRecord?.read(buffer, 0, buffer.size) ?: 0
-                    if (bytesRead > 0) {
-                        val fileName = "audio_${System.currentTimeMillis()}.wav"
-                        Log.d(TAG, "Writing wav file $fileName")
-                        val audioFile = File(filesDir, fileName)
-                        writeWavHeader(audioFile)
-                        val output = FileOutputStream(audioFile, true)
-                        output.write(buffer, 0, bytesRead)
-                        output.close()
-                        sendFilePath(audioFile.path)
-                    }
-                }
-            }
-        }, 0, 5000)
-    }
-
-
-    private fun writeWavHeader(audioFile: File) {
+    fun startListening() {
         try {
-            val output = RandomAccessFile(audioFile, "rw")
+            recorder = AudioRecord(
+                MediaRecorder.AudioSource.MIC,
+                sampleRate,
+                channel,
+                audioEncoding,
+                bufferSize
+            )
+            val status = recorder!!.state
+            if (status == 1) {
+                recorder!!.startRecording()
+                isRecording = true
+            }
+            recordingThread = Thread { writeRawData() }
+            recordingThread!!.start()
 
-            // Set file length at the beginning to update the header
-            output.seek(0)
-            output.writeBytes("RIFF")
-            output.writeInt(Integer.reverseBytes((output.length() - 8).toInt()))
-            output.writeBytes("WAVE")
-            output.writeBytes("fmt ")
-            output.writeInt(Integer.reverseBytes(16))  // Sub-chunk size, 16 for PCM
-            output.writeShort(1.toShort().reverseByteOrder().toInt())  // AudioFormat, 1 for PCM
-            output.writeShort(1.toShort().reverseByteOrder().toInt())  // NumChannels, 1 for mono
-            output.writeInt(Integer.reverseBytes(SAMPLE_RATE))  // SampleRate
-            output.writeInt(Integer.reverseBytes(SAMPLE_RATE * 16 / 8))  // ByteRate
-            output.writeShort((16 / 8).toShort().reverseByteOrder().toInt())  // BlockAlign
-            output.writeShort(16.toShort().reverseByteOrder().toInt())  // BitsPerSample
-            output.writeBytes("data")
-            output.writeInt(Integer.reverseBytes((output.length() - 44).toInt()))
-
-            output.close()
+            stopHandler.postDelayed(
+                { stopRecording(true) },
+                recordingDurationMilliseconds.toLong()
+            )
         } catch (e: Exception) {
-            Log.e(TAG, "Error writing WAV header: ${e.message}")
+            Log.e(TAG, "Exception : startListening : $e")
         }
     }
 
-    private fun Short.reverseByteOrder(): Short {
-        return ((this.toInt() and 0xFF) shl 8 or ((this.toInt() and 0xFF00) ushr 8)).toShort()
+
+    private fun stopRecording(restart: Boolean) {
+        try {
+            if (recorder != null) {
+                isRecording = false
+                val status = recorder!!.state
+                if (status == 1) {
+                    recorder!!.stop()
+                }
+                recorder!!.release()
+                recordingThread = null
+                createWavFile(
+                    getPath(tempRawFile),
+                    getPath("final_${System.currentTimeMillis()}_.wav")
+                )
+                if (restart)
+                    startListening()
+                else
+                    stopHandler.removeCallbacksAndMessages(null)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception : stopRecording : $e")
+        }
+    }
+
+
+    private fun createWavFile(tempPath: String, wavPath: String) {
+        try {
+            val fileInputStream = FileInputStream(tempPath)
+            val fileOutputStream = FileOutputStream(wavPath)
+            val data = ByteArray(bufferSize)
+            val channels = 2
+            val byteRate = (bpp * sampleRate * channels / 8).toLong()
+            val totalAudioLen = fileInputStream.channel.size()
+            val totalDataLen = totalAudioLen + 36
+            writeWavHeader(fileOutputStream, totalAudioLen, totalDataLen, channels, byteRate)
+            while (fileInputStream.read(data) != -1) {
+                fileOutputStream.write(data)
+            }
+            fileInputStream.close()
+            fileOutputStream.close()
+            sendFilePath(wavPath)
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception : createWavFile : $e")
+        }
+    }
+
+
+    private fun writeWavHeader(
+        fileOutputStream: FileOutputStream,
+        totalAudioLen: Long,
+        totalDataLen: Long,
+        channels: Int,
+        byteRate: Long
+    ) {
+        try {
+            val header = ByteArray(44)
+            header[0] = 'R'.code.toByte() // RIFF/WAVE header
+            header[1] = 'I'.code.toByte()
+            header[2] = 'F'.code.toByte()
+            header[3] = 'F'.code.toByte()
+            header[4] = (totalDataLen and 0xffL).toByte()
+            header[5] = (totalDataLen shr 8 and 0xffL).toByte()
+            header[6] = (totalDataLen shr 16 and 0xffL).toByte()
+            header[7] = (totalDataLen shr 24 and 0xffL).toByte()
+            header[8] = 'W'.code.toByte()
+            header[9] = 'A'.code.toByte()
+            header[10] = 'V'.code.toByte()
+            header[11] = 'E'.code.toByte()
+            header[12] = 'f'.code.toByte() // 'fmt ' chunk
+            header[13] = 'm'.code.toByte()
+            header[14] = 't'.code.toByte()
+            header[15] = ' '.code.toByte()
+            header[16] = 16 // 4 bytes: size of 'fmt ' chunk
+            header[17] = 0
+            header[18] = 0
+            header[19] = 0
+            header[20] = 1 // format = 1
+            header[21] = 0
+            header[22] = channels.toByte()
+            header[23] = 0
+            header[24] = (sampleRate.toLong() and 0xffL).toByte()
+            header[25] = (sampleRate.toLong() shr 8 and 0xffL).toByte()
+            header[26] = (sampleRate.toLong() shr 16 and 0xffL).toByte()
+            header[27] = (sampleRate.toLong() shr 24 and 0xffL).toByte()
+            header[28] = (byteRate and 0xffL).toByte()
+            header[29] = (byteRate shr 8 and 0xffL).toByte()
+            header[30] = (byteRate shr 16 and 0xffL).toByte()
+            header[31] = (byteRate shr 24 and 0xffL).toByte()
+            header[32] = (2 * 16 / 8).toByte() // block align
+            header[33] = 0
+            header[34] = bpp.toByte() // bits per sample
+            header[35] = 0
+            header[36] = 'd'.code.toByte()
+            header[37] = 'a'.code.toByte()
+            header[38] = 't'.code.toByte()
+            header[39] = 'a'.code.toByte()
+            header[40] = (totalAudioLen and 0xffL).toByte()
+            header[41] = (totalAudioLen shr 8 and 0xffL).toByte()
+            header[42] = (totalAudioLen shr 16 and 0xffL).toByte()
+            header[43] = (totalAudioLen shr 24 and 0xffL).toByte()
+            fileOutputStream.write(header, 0, 44)
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception : writeWavHeader : $e")
+        }
+    }
+
+    private fun writeRawData() {
+        try {
+            val data = ByteArray(bufferSize)
+            val path = getPath(tempRawFile)
+            val fileOutputStream = FileOutputStream(path)
+            var read: Int
+            while (isRecording) {
+                read = recorder!!.read(data, 0, bufferSize)
+                if (AudioRecord.ERROR_INVALID_OPERATION != read) {
+                    try {
+                        fileOutputStream.write(data)
+                    } catch (e: IOException) {
+                        Log.e(TAG, "Exception : writeRawData>fileOutputStream : $e")
+                    }
+                }
+            }
+            fileOutputStream.close()
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception : writeRawData : $e")
+        }
     }
 
     private fun sendFilePath(filePath: String) {
@@ -136,14 +219,10 @@ class AlwaysListeningService : Service() {
         }
     }
 
-    private fun stopListening() {
-        Log.d(TAG, "Stopped listening")
-        isListening = false
-        audioRecord?.stop()
-        audioRecord?.release()
-        audioRecord = null
-    }
 
+    private fun getPath(name: String): String {
+        return "$filesDir/$name"
+    }
 
     companion object {
         const val TAG = "AlwaysListeningService"

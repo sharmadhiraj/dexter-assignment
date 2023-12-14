@@ -4,8 +4,6 @@ package com.sharmadhiraj.dexter_assignment
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.AudioFormat
-import android.media.AudioRecord
 import android.os.Bundle
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
@@ -14,6 +12,7 @@ import com.sharmadhiraj.dexter_assignment.service.AlwaysListeningService
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+
 
 class MainActivity : FlutterActivity() {
     private val RECORD_AUDIO_PERMISSION_REQUEST_CODE = 123
@@ -45,7 +44,6 @@ class MainActivity : FlutterActivity() {
             return
         }
         startService()
-
     }
 
 
@@ -57,12 +55,7 @@ class MainActivity : FlutterActivity() {
         when (requestCode) {
             RECORD_AUDIO_PERMISSION_REQUEST_CODE -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // Permission granted, continue with audio recording setup
-                    val minBufferSize = AudioRecord.getMinBufferSize(
-                        AlwaysListeningService.SAMPLE_RATE,
-                        AudioFormat.CHANNEL_IN_MONO,
-                        AudioFormat.ENCODING_PCM_16BIT
-                    )
+                    // Permission granted, continue with the service
                     startService()
                 } else {
                     // Permission denied, show a message or take appropriate action
