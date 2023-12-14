@@ -23,7 +23,7 @@ class DexterAssignmentApp extends StatelessWidget {
     return ThemeData(
       colorScheme: ColorScheme.fromSeed(seedColor: Constant.primaryColor),
       primaryColor: Constant.primaryColor,
-      useMaterial3: false,
+      useMaterial3: true,
     );
   }
 }
