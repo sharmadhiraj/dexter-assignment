@@ -1,29 +1,15 @@
-import 'dart:async';
-
 import 'package:dexter_assignment/features/home/bloc/home.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _initMethodChannel());
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: _buildAppBar(),
-      body: _buildBody(),
+      body: _buildBody(context),
     );
   }
 
@@ -70,14 +56,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildInfoSection(),
-          _buildTranscriptsSection(),
+          _buildTranscriptsSection(context),
         ],
       ),
     );
@@ -101,8 +87,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTranscriptsSection() {
+  Widget _buildTranscriptsSection(BuildContext context) {
     return BlocBuilder<HomeCubit, HomeState>(
+      bloc: context.read<HomeCubit>()..init(),
       builder: (context, state) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,24 +147,6 @@ class _HomeScreenState extends State<HomeScreen> {
         color: Colors.white,
       ),
       child: Text(transcript),
-    );
-  }
-
-  void _initMethodChannel() {
-    const MethodChannel methodChannel =
-        MethodChannel('com.sharmadhiraj.always_listening_service/data');
-    methodChannel.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case "onFilePath":
-          final String filePath = call.arguments;
-          print("Received file path $filePath");
-          context.read<HomeCubit>().uploadAudioFile(filePath);
-          break;
-      }
-    });
-    Future.delayed(
-      const Duration(milliseconds: 500),
-      () => methodChannel.invokeMethod("startService"),
     );
   }
 }

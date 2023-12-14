@@ -17,17 +17,17 @@ and Clean Architecture.
 
 - Implementation of an always-running service.
 - Creation of WAV audio files at regular intervals.
-- Implementation of MethodChannel to start the service and receive file paths from Kotlin to
-  Flutter.
+- Implementation of MethodChannel to start the service
 - Implementation of Bloc for state management.
+- Access the wav record files upload them, delete once file is uploaded.
 - Upload of received file paths to the server, handling responses, and populating data.
 - Handle audio record permission in runtime
 
 ## ToDo/Improvements
 
 - Improve service state management (foreground and sleep modes).
-- Enhance MethodChannel implementation to handle inconsistencies when called from the service.
 - Write tests for Kotlin methods.
+- Further error handling & retry mechanism
 
 I am actively working on enhancing the project and welcome any feedback!
 

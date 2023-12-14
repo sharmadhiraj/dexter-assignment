@@ -8,6 +8,8 @@ class HomeRepo {
     try {
       final Map<String, dynamic> responseJson =
           await ApiService.sendAudioFile(request.filePath);
+      print("RESPONSE FROM SERVER");
+      print(responseJson);
       return TranscriptResponse.fromJson(responseJson);
     } catch (e) {
       return Future.error(e);

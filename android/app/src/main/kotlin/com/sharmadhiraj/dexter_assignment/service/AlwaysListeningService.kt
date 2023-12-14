@@ -10,7 +10,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
-import com.sharmadhiraj.dexter_assignment.Dexter
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
@@ -23,9 +22,7 @@ class AlwaysListeningService : Service() {
     private var channel = AudioFormat.CHANNEL_IN_STEREO
     private var audioEncoding = AudioFormat.ENCODING_PCM_16BIT
     private var bufferSize = AudioRecord.getMinBufferSize(
-        8000,
-        AudioFormat.CHANNEL_IN_MONO,
-        AudioFormat.ENCODING_PCM_16BIT
+        8000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
     )
     private var recordingThread: Thread? = null
     private var isRecording = false
@@ -61,11 +58,7 @@ class AlwaysListeningService : Service() {
     fun startListening() {
         try {
             recorder = AudioRecord(
-                MediaRecorder.AudioSource.MIC,
-                sampleRate,
-                channel,
-                audioEncoding,
-                bufferSize
+                MediaRecorder.AudioSource.MIC, sampleRate, channel, audioEncoding, bufferSize
             )
             val status = recorder!!.state
             if (status == 1) {
@@ -76,8 +69,7 @@ class AlwaysListeningService : Service() {
             recordingThread!!.start()
 
             stopHandler.postDelayed(
-                { stopRecording(true) },
-                recordingDurationMilliseconds.toLong()
+                { stopRecording(true) }, recordingDurationMilliseconds.toLong()
             )
         } catch (e: Exception) {
             Log.e(TAG, "Exception : startListening : $e")
@@ -96,13 +88,10 @@ class AlwaysListeningService : Service() {
                 recorder!!.release()
                 recordingThread = null
                 createWavFile(
-                    getPath(tempRawFile),
-                    getPath("final_${System.currentTimeMillis()}_.wav")
+                    getPath(tempRawFile), getPath("final_${System.currentTimeMillis()}_.wav")
                 )
-                if (restart)
-                    startListening()
-                else
-                    stopHandler.removeCallbacksAndMessages(null)
+                if (restart) startListening()
+                else stopHandler.removeCallbacksAndMessages(null)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception : stopRecording : $e")
@@ -125,7 +114,6 @@ class AlwaysListeningService : Service() {
             }
             fileInputStream.close()
             fileOutputStream.close()
-            sendFilePath(wavPath)
         } catch (e: Exception) {
             Log.e(TAG, "Exception : createWavFile : $e")
         }
@@ -210,12 +198,6 @@ class AlwaysListeningService : Service() {
             fileOutputStream.close()
         } catch (e: Exception) {
             Log.e(TAG, "Exception : writeRawData : $e")
-        }
-    }
-
-    private fun sendFilePath(filePath: String) {
-        Handler(Looper.getMainLooper()).post {
-            Dexter.methodChannel.invokeMethod("onFilePath", filePath)
         }
     }
 

@@ -4,6 +4,6 @@ class TranscriptResponse {
   TranscriptResponse(this.transcript);
 
   factory TranscriptResponse.fromJson(Map<String, dynamic> json) {
-    return TranscriptResponse(json["transcript"] ?? "");
+    return TranscriptResponse(json["transcription"] ?? "");
   }
 }

@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
-        android:name=".Dexter"
+        android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:label="Dexter Assignment">
         <activity
