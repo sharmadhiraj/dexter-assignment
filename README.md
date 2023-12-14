@@ -21,11 +21,11 @@ and Clean Architecture.
   Flutter.
 - Implementation of Bloc for state management.
 - Upload of received file paths to the server, handling responses, and populating data.
+- Handle audio record permission in runtime
 
 ## ToDo/Improvements
 
 - Improve service state management (foreground and sleep modes).
-- Enhance handling of audio recording permissions.
 - Improve the process of creating and encoding WAV files.
 - Enhance MethodChannel implementation to handle inconsistencies when called from the service.
 - Write tests for Kotlin methods.

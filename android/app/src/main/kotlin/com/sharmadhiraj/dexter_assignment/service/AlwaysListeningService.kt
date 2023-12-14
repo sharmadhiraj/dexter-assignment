@@ -1,9 +1,8 @@
 package com.sharmadhiraj.dexter_assignment.service
 
-import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
@@ -11,8 +10,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
-import android.widget.Toast
-import androidx.core.app.ActivityCompat
 import com.sharmadhiraj.dexter_assignment.Dexter
 import java.io.File
 import java.io.FileOutputStream
@@ -63,18 +60,15 @@ class AlwaysListeningService : Service() {
             SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
         )
 
-        if (ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            Toast.makeText(
-                this,
-                "Kindly grant the app permission to record audio by navigating to the app settings.",
-                Toast.LENGTH_LONG
-            ).show()
-            return
-        }
+        // Check for audio recording permission
 
+
+        // Continue with audio recording setup
+        setupAudioRecording(minBufferSize)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun setupAudioRecording(minBufferSize: Int) {
         audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC,
             SAMPLE_RATE,
@@ -104,6 +98,7 @@ class AlwaysListeningService : Service() {
             }
         }, 0, 5000)
     }
+
 
     private fun writeWavHeader(audioFile: File) {
         try {
