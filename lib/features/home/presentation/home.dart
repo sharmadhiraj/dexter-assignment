@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onSelected: (value) {},
       itemBuilder: (BuildContext context) {
         return ["Logout", "Settings"].map(
-              (String choice) {
+          (String choice) {
             return PopupMenuItem<String>(
               value: choice,
               child: Text(choice),

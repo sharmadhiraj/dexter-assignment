@@ -13,9 +13,7 @@ import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
-import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.embedding.engine.dart.DartExecutor
-import io.flutter.plugin.common.MethodChannel
+import com.sharmadhiraj.dexter_assignment.Dexter
 import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
@@ -27,8 +25,6 @@ class AlwaysListeningService : Service() {
 
     private var isListening = false
     private var audioRecord: AudioRecord? = null
-    private var flutterEngine: FlutterEngine? = null
-    private val CHANNEL_NAME = "com.sharmadhiraj.always_listening_service/data"
 
 
     private var timer: Timer? = null
@@ -37,10 +33,6 @@ class AlwaysListeningService : Service() {
         super.onCreate()
         Log.d(TAG, "Service created")
 
-        flutterEngine = FlutterEngine(applicationContext)
-        flutterEngine?.dartExecutor?.executeDartEntrypoint(
-            DartExecutor.DartEntrypoint.createDefault()
-        )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -145,11 +137,7 @@ class AlwaysListeningService : Service() {
 
     private fun sendFilePath(filePath: String) {
         Handler(Looper.getMainLooper()).post {
-            Log.d(TAG, "Sending filepath")
-            flutterEngine?.let {
-                val channel = MethodChannel(it.dartExecutor.binaryMessenger, CHANNEL_NAME)
-                channel.invokeMethod("onFilePath", filePath)
-            }
+            Dexter.methodChannel.invokeMethod("onFilePath", filePath)
         }
     }
 

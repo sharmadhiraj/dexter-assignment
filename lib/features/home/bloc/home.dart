@@ -16,7 +16,6 @@ class HomeState {
     if (transcripts.length >= 3) {
       transcripts.removeAt(0);
     }
-    print("Updating state");
     return HomeState(
       apiCallCount: apiCallCount + 1,
       transcripts: [...transcripts, transcript],
@@ -30,7 +29,6 @@ class HomeCubit extends Cubit<HomeState> {
   Future<void> uploadAudioFile(String filePath) async {
     final TranscriptResponse response =
         await HomeRepo.uploadAudioFile(TranscriptRequest(filePath));
-    emit(state
-        .updateState(DateTime.timestamp().millisecondsSinceEpoch.toString()));
+    emit(state.updateState(response.transcript));
   }
 }
