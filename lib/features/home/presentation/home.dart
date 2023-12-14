@@ -1,7 +1,23 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
 
-class HomeScreen extends StatelessWidget {
+import 'package:dexter_assignment/features/home/bloc/home.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initMethodChannel());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +59,7 @@ class HomeScreen extends StatelessWidget {
       onSelected: (value) {},
       itemBuilder: (BuildContext context) {
         return ["Logout", "Settings"].map(
-          (String choice) {
+              (String choice) {
             return PopupMenuItem<String>(
               value: choice,
               child: Text(choice),
@@ -61,8 +77,7 @@ class HomeScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildInfoSection(),
-          _buildApiCallCounterSection(),
-          _buildLastTranscriptsSection(),
+          _buildTranscriptsSection(),
         ],
       ),
     );
@@ -86,19 +101,33 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildApiCallCounterSection() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 24),
+  Widget _buildTranscriptsSection() {
+    return BlocBuilder<HomeCubit, HomeState>(
+      builder: (context, state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildApiCallCounterSection(state.apiCallCount),
+            _buildLastTranscriptsSection(state.transcripts),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildApiCallCounterSection(int count) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Center(
         child: Column(
           children: [
-            Text(
+            const Text(
               "API call counter",
               style: TextStyle(color: Colors.black54),
             ),
             Text(
-              "03",
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              count.toString(),
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
             )
           ],
         ),
@@ -106,7 +135,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLastTranscriptsSection() {
+  Widget _buildLastTranscriptsSection(List<String> transcripts) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -114,34 +143,41 @@ class HomeScreen extends StatelessWidget {
           "Last STT transcripts",
           style: TextStyle(color: Colors.black54),
         ),
-        _buildTranscriptItem(
-          "Hello Hello, are you still listening? This is the test",
-        ),
-        _buildTranscriptItem(
-          "Hello Hello, are you still listening? This is the test",
-        ),
-        _buildTranscriptItem(
-          "Hello Hello, are you still listening? This is the test",
-          withDivider: false,
-        ),
+        ...transcripts.map((e) => _buildTranscriptItem(e)).toList(),
       ],
     );
   }
 
-  Widget _buildTranscriptItem(String transcript, {bool withDivider = true}) {
+  Widget _buildTranscriptItem(String transcript) {
     return Container(
       width: double.maxFinite,
       padding: const EdgeInsets.only(bottom: 8),
       margin: const EdgeInsets.symmetric(vertical: 6),
-      decoration: withDivider
-          ? const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(width: 1, color: Colors.black54),
-              ),
-              color: Colors.white,
-            )
-          : null,
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(width: 1, color: Colors.black54),
+        ),
+        color: Colors.white,
+      ),
       child: Text(transcript),
+    );
+  }
+
+  void _initMethodChannel() {
+    const MethodChannel methodChannel =
+        MethodChannel('com.sharmadhiraj.always_listening_service/data');
+    methodChannel.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case "onFilePath":
+          final String filePath = call.arguments;
+          print("Received file path $filePath");
+          context.read<HomeCubit>().uploadAudioFile(filePath);
+          break;
+      }
+    });
+    Future.delayed(
+      const Duration(milliseconds: 500),
+      () => methodChannel.invokeMethod("startService"),
     );
   }
 }

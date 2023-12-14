@@ -1,9 +1,16 @@
-import 'package:dexter_assignment/screens/home.dart';
-import 'package:dexter_assignment/util/constants.dart';
+import 'dart:io';
+
+import 'package:dexter_assignment/config/constants.dart';
+import 'package:dexter_assignment/features/home/bloc/home.dart';
+import 'package:dexter_assignment/features/home/presentation/home.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  HttpOverrides.global = MyHttpOverrides();
+  // startAlwaysListeningService();
   runApp(const DexterAssignmentApp());
 }
 
@@ -12,10 +19,15 @@ class DexterAssignmentApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: Constant.appName,
-      theme: _buildThemeData(context),
-      home: const HomeScreen(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => HomeCubit()),
+      ],
+      child: MaterialApp(
+        title: Constant.appName,
+        theme: _buildThemeData(context),
+        home: const HomeScreen(),
+      ),
     );
   }
 
@@ -25,5 +37,15 @@ class DexterAssignmentApp extends StatelessWidget {
       primaryColor: Constant.primaryColor,
       useMaterial3: true,
     );
+  }
+}
+
+//To fix HandshakeException: Handshake error in client
+class MyHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
   }
 }
