@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dexter_assignment/features/home/data/transcript_request.dart';
 import 'package:dexter_assignment/features/home/data/transcript_response.dart';
 import 'package:dexter_assignment/features/home/repo/home.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -50,10 +51,10 @@ class HomeCubit extends Cubit<HomeState> {
           .whereType<File>()
           .where((element) => element.path.contains("final_"))
           .toList();
-      print("${entities.length} files to upload.");
+      debugPrint("${entities.length} files to upload.");
       return entities.firstOrNull;
     } catch (e) {
-      print("Error _getFileToUpload : $e");
+      debugPrint("Error _getFileToUpload : $e");
     }
     return null;
   }
@@ -65,7 +66,7 @@ class HomeCubit extends Cubit<HomeState> {
       emit(state.updateState(response.transcript));
       if (file.existsSync()) file.deleteSync();
     } catch (e) {
-      print("Error _uploadAudioFile : $e");
+      debugPrint("Error _uploadAudioFile : $e");
     }
   }
 }

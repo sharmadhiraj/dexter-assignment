@@ -16,7 +16,6 @@ import java.io.IOException
 
 class AlwaysListeningService : Service() {
 
-
     private var recorder: AudioRecord? = null
     private var sampleRate = 44100
     private var channel = AudioFormat.CHANNEL_IN_STEREO
@@ -208,6 +207,5 @@ class AlwaysListeningService : Service() {
 
     companion object {
         const val TAG = "AlwaysListeningService"
-        const val SAMPLE_RATE = 44100
     }
 }

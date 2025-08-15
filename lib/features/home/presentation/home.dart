@@ -130,7 +130,7 @@ class HomeScreen extends StatelessWidget {
           "Last STT transcripts",
           style: TextStyle(color: Colors.black54),
         ),
-        ...transcripts.map((e) => _buildTranscriptItem(e)).toList(),
+        ...transcripts.map((e) => _buildTranscriptItem(e)),
       ],
     );
   }
