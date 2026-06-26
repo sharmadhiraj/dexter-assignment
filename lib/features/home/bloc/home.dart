@@ -18,12 +18,11 @@ class HomeState {
   });
 
   HomeState updateState(String transcript) {
-    if (transcripts.length >= 3) {
-      transcripts.removeAt(0);
-    }
+    final updated = List<String>.from(transcripts);
+    if (updated.length >= 3) updated.removeAt(0);
     return HomeState(
       apiCallCount: apiCallCount + 1,
-      transcripts: [...transcripts, transcript],
+      transcripts: [...updated, transcript],
     );
   }
 }
@@ -31,8 +30,10 @@ class HomeState {
 class HomeCubit extends Cubit<HomeState> {
   HomeCubit() : super(HomeState());
 
+  Timer? _timer;
+
   void init() {
-    Timer.periodic(
+    _timer = Timer.periodic(
       const Duration(seconds: 3),
       (Timer timer) async {
         final File? file = await _getFileToUpload();
@@ -41,6 +42,12 @@ class HomeCubit extends Cubit<HomeState> {
         }
       },
     );
+  }
+
+  @override
+  Future<void> close() {
+    _timer?.cancel();
+    return super.close();
   }
 
   Future<File?> _getFileToUpload() async {
@@ -63,7 +70,7 @@ class HomeCubit extends Cubit<HomeState> {
     try {
       final TranscriptResponse response =
           await HomeRepo.uploadAudioFile(TranscriptRequest(file.path));
-      emit(state.updateState(response.transcript));
+      if (!isClosed) emit(state.updateState(response.transcript));
       if (file.existsSync()) file.deleteSync();
     } catch (e) {
       debugPrint("Error _uploadAudioFile : $e");

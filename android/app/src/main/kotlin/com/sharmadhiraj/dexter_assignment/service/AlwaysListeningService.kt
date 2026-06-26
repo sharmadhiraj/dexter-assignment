@@ -1,15 +1,20 @@
 package com.sharmadhiraj.dexter_assignment.service
 
 import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
@@ -17,34 +22,40 @@ import java.io.IOException
 class AlwaysListeningService : Service() {
 
     private var recorder: AudioRecord? = null
-    private var sampleRate = 44100
-    private var channel = AudioFormat.CHANNEL_IN_STEREO
-    private var audioEncoding = AudioFormat.ENCODING_PCM_16BIT
-    private var bufferSize = AudioRecord.getMinBufferSize(
-        8000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
+    private val sampleRate = 44100
+    private val channel = AudioFormat.CHANNEL_IN_STEREO
+    private val channelCount = 2
+    private val audioEncoding = AudioFormat.ENCODING_PCM_16BIT
+    private val bufferSize = AudioRecord.getMinBufferSize(
+        44100, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT
     )
     private var recordingThread: Thread? = null
+    @Volatile
     private var isRecording = false
     private val stopHandler = Handler(Looper.getMainLooper())
     private val recordingDurationMilliseconds = 5500
-    private var tempRawFile = "temp_record.raw"
+    private val tempRawFile = "temp_record.raw"
     private val bpp = 16
 
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "Service created")
-
+        createNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "Service started")
+        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("Dexter")
+            .setContentText("Listening...")
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .build()
+        startForeground(NOTIFICATION_ID, notification)
         startListening()
         return START_STICKY
     }
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
+    override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
         super.onDestroy()
@@ -52,6 +63,17 @@ class AlwaysListeningService : Service() {
         stopRecording(false)
     }
 
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationChannel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                "Always Listening Service",
+                NotificationManager.IMPORTANCE_LOW
+            )
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(notificationChannel)
+        }
+    }
 
     @SuppressLint("MissingPermission")
     fun startListening() {
@@ -59,8 +81,7 @@ class AlwaysListeningService : Service() {
             recorder = AudioRecord(
                 MediaRecorder.AudioSource.MIC, sampleRate, channel, audioEncoding, bufferSize
             )
-            val status = recorder!!.state
-            if (status == 1) {
+            if (recorder!!.state == AudioRecord.STATE_INITIALIZED) {
                 recorder!!.startRecording()
                 isRecording = true
             }
@@ -75,60 +96,56 @@ class AlwaysListeningService : Service() {
         }
     }
 
-
     private fun stopRecording(restart: Boolean) {
         try {
-            if (recorder != null) {
-                isRecording = false
-                val status = recorder!!.state
-                if (status == 1) {
-                    recorder!!.stop()
-                }
-                recorder!!.release()
-                recordingThread = null
-                createWavFile(
-                    getPath(tempRawFile), getPath("final_${System.currentTimeMillis()}_.wav")
-                )
-                if (restart) startListening()
-                else stopHandler.removeCallbacksAndMessages(null)
+            val currentRecorder = recorder ?: return
+            isRecording = false
+            if (currentRecorder.state == AudioRecord.STATE_INITIALIZED) {
+                currentRecorder.stop()
             }
+            currentRecorder.release()
+            recorder = null
+            recordingThread = null
+            val rawPath = getPath(tempRawFile)
+            createWavFile(rawPath, getPath("final_${System.currentTimeMillis()}_.wav"))
+            File(rawPath).delete()
+            if (restart) startListening()
+            else stopHandler.removeCallbacksAndMessages(null)
         } catch (e: Exception) {
             Log.e(TAG, "Exception : stopRecording : $e")
         }
     }
 
-
     private fun createWavFile(tempPath: String, wavPath: String) {
         try {
-            val fileInputStream = FileInputStream(tempPath)
-            val fileOutputStream = FileOutputStream(wavPath)
-            val data = ByteArray(bufferSize)
-            val channels = 2
-            val byteRate = (bpp * sampleRate * channels / 8).toLong()
-            val totalAudioLen = fileInputStream.channel.size()
-            val totalDataLen = totalAudioLen + 36
-            writeWavHeader(fileOutputStream, totalAudioLen, totalDataLen, channels, byteRate)
-            while (fileInputStream.read(data) != -1) {
-                fileOutputStream.write(data)
+            FileInputStream(tempPath).use { fileInputStream ->
+                FileOutputStream(wavPath).use { fileOutputStream ->
+                    val data = ByteArray(bufferSize)
+                    val byteRate = (bpp * sampleRate * channelCount / 8).toLong()
+                    val totalAudioLen = fileInputStream.channel.size()
+                    val totalDataLen = totalAudioLen + 36
+                    writeWavHeader(fileOutputStream, totalAudioLen, totalDataLen, byteRate)
+                    var bytesRead: Int
+                    while (fileInputStream.read(data).also { bytesRead = it } != -1) {
+                        fileOutputStream.write(data, 0, bytesRead)
+                    }
+                }
             }
-            fileInputStream.close()
-            fileOutputStream.close()
         } catch (e: Exception) {
             Log.e(TAG, "Exception : createWavFile : $e")
         }
     }
 
-
     private fun writeWavHeader(
         fileOutputStream: FileOutputStream,
         totalAudioLen: Long,
         totalDataLen: Long,
-        channels: Int,
         byteRate: Long
     ) {
         try {
+            val blockAlign = channelCount * bpp / 8
             val header = ByteArray(44)
-            header[0] = 'R'.code.toByte() // RIFF/WAVE header
+            header[0] = 'R'.code.toByte()
             header[1] = 'I'.code.toByte()
             header[2] = 'F'.code.toByte()
             header[3] = 'F'.code.toByte()
@@ -140,17 +157,17 @@ class AlwaysListeningService : Service() {
             header[9] = 'A'.code.toByte()
             header[10] = 'V'.code.toByte()
             header[11] = 'E'.code.toByte()
-            header[12] = 'f'.code.toByte() // 'fmt ' chunk
+            header[12] = 'f'.code.toByte()
             header[13] = 'm'.code.toByte()
             header[14] = 't'.code.toByte()
             header[15] = ' '.code.toByte()
-            header[16] = 16 // 4 bytes: size of 'fmt ' chunk
+            header[16] = 16
             header[17] = 0
             header[18] = 0
             header[19] = 0
-            header[20] = 1 // format = 1
+            header[20] = 1 // PCM format
             header[21] = 0
-            header[22] = channels.toByte()
+            header[22] = channelCount.toByte()
             header[23] = 0
             header[24] = (sampleRate.toLong() and 0xffL).toByte()
             header[25] = (sampleRate.toLong() shr 8 and 0xffL).toByte()
@@ -160,9 +177,9 @@ class AlwaysListeningService : Service() {
             header[29] = (byteRate shr 8 and 0xffL).toByte()
             header[30] = (byteRate shr 16 and 0xffL).toByte()
             header[31] = (byteRate shr 24 and 0xffL).toByte()
-            header[32] = (2 * 16 / 8).toByte() // block align
+            header[32] = blockAlign.toByte()
             header[33] = 0
-            header[34] = bpp.toByte() // bits per sample
+            header[34] = bpp.toByte()
             header[35] = 0
             header[36] = 'd'.code.toByte()
             header[37] = 'a'.code.toByte()
@@ -181,31 +198,28 @@ class AlwaysListeningService : Service() {
     private fun writeRawData() {
         try {
             val data = ByteArray(bufferSize)
-            val path = getPath(tempRawFile)
-            val fileOutputStream = FileOutputStream(path)
-            var read: Int
-            while (isRecording) {
-                read = recorder!!.read(data, 0, bufferSize)
-                if (AudioRecord.ERROR_INVALID_OPERATION != read) {
-                    try {
-                        fileOutputStream.write(data)
-                    } catch (e: IOException) {
-                        Log.e(TAG, "Exception : writeRawData>fileOutputStream : $e")
+            FileOutputStream(getPath(tempRawFile)).use { fileOutputStream ->
+                while (isRecording) {
+                    val read = recorder!!.read(data, 0, bufferSize)
+                    if (read > 0) {
+                        try {
+                            fileOutputStream.write(data, 0, read)
+                        } catch (e: IOException) {
+                            Log.e(TAG, "Exception : writeRawData>fileOutputStream : $e")
+                        }
                     }
                 }
             }
-            fileOutputStream.close()
         } catch (e: Exception) {
             Log.e(TAG, "Exception : writeRawData : $e")
         }
     }
 
-
-    private fun getPath(name: String): String {
-        return "$filesDir/$name"
-    }
+    private fun getPath(name: String): String = "$filesDir/$name"
 
     companion object {
         const val TAG = "AlwaysListeningService"
+        private const val NOTIFICATION_CHANNEL_ID = "always_listening_channel"
+        private const val NOTIFICATION_ID = 1
     }
 }

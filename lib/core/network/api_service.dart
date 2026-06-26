@@ -1,19 +1,18 @@
 import 'dart:convert';
 
+import 'package:dexter_assignment/config/constants.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
   static Future<Map<String, dynamic>> sendAudioFile(String filePath) async {
-    // Create a multipart request
     var request = http.MultipartRequest(
-      'POST',
-      Uri.parse('https://35.207.149.36:443/stt_flutter_tech_assignment'),
+      "POST",
+      Uri.parse(Constant.sttApiUrl),
     );
 
-    // Add headers
     request.headers.addAll({
-      'Authorization': 'Bearer KsJ5Ag3',
+      "Authorization": "Bearer ${Constant.apiToken}",
     });
 
     // Add the file
