@@ -37,7 +37,7 @@ class HomeCubit extends Cubit<HomeState> {
       (Timer timer) async {
         final File? file = await _getFileToUpload();
         if (file != null) {
-          _uploadAudioFile(file);
+          await _uploadAudioFile(file);
         }
       },
     );

@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 
 class HomeRepo {
   static Future<TranscriptResponse> uploadAudioFile(
-      TranscriptRequest request) async {
+    TranscriptRequest request,
+  ) async {
     try {
       final Map<String, dynamic> responseJson =
           await ApiService.sendAudioFile(request.filePath);

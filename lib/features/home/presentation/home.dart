@@ -82,7 +82,8 @@ class HomeScreen extends StatelessWidget {
         Text("Every 10 seconds, we send that audio to our STT API."),
         Text("The last 3 transcripts will be shown on the screen."),
         Text(
-            "Additionally, we show a timer that indicates since when the app is listening."),
+          "Additionally, we show a timer that indicates since when the app is listening.",
+        ),
       ],
     );
   }
@@ -115,7 +116,7 @@ class HomeScreen extends StatelessWidget {
             Text(
               count.toString(),
               style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-            )
+            ),
           ],
         ),
       ),

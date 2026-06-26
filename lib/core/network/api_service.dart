@@ -6,8 +6,10 @@ import 'package:http/http.dart' as http;
 class ApiService {
   static Future<Map<String, dynamic>> sendAudioFile(String filePath) async {
     // Create a multipart request
-    var request = http.MultipartRequest('POST',
-        Uri.parse('https://35.207.149.36:443/stt_flutter_tech_assignment'));
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse('https://35.207.149.36:443/stt_flutter_tech_assignment'),
+    );
 
     // Add headers
     request.headers.addAll({
