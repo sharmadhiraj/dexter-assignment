@@ -21,7 +21,9 @@ class HomeScreen extends StatelessWidget {
             const ListeningBanner(),
             const SizedBox(height: 12),
             _ApiCallCard(
-                count: state.uploadCount, isUploading: state.isUploading),
+              count: state.uploadCount,
+              isUploading: state.isUploading,
+            ),
             if (state.lastError != null) ...[
               const SizedBox(height: 8),
               _ErrorRow(message: state.lastError!),

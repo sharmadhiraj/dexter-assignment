@@ -24,8 +24,9 @@ class _ListeningBannerState extends State<ListeningBanner>
     super.initState();
     _sessionStart = DateTime.now();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _elapsed = DateTime.now().difference(_sessionStart));
+      }
     });
     _controller = AnimationController(
       vsync: this,

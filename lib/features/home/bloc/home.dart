@@ -98,7 +98,8 @@ class TranscriptionCubit extends Cubit<TranscriptionState> {
           )
           .toList();
       debugPrint(
-          "TranscriptionCubit: loaded persisted state — $count uploads, ${transcripts.length} transcripts");
+        "TranscriptionCubit: loaded persisted state — $count uploads, ${transcripts.length} transcripts",
+      );
       if (!isClosed) {
         emit(TranscriptionState(uploadCount: count, transcripts: transcripts));
       }
@@ -125,7 +126,8 @@ class TranscriptionCubit extends Cubit<TranscriptionState> {
     final file = await _nextPendingFile();
     if (file != null) {
       debugPrint(
-          "TranscriptionCubit: file found — ${file.uri.pathSegments.last}");
+        "TranscriptionCubit: file found — ${file.uri.pathSegments.last}",
+      );
       await _transcribeAndEmit(file);
     }
   }
@@ -158,7 +160,8 @@ class TranscriptionCubit extends Cubit<TranscriptionState> {
         return;
       }
       debugPrint(
-          "TranscriptionCubit: transcript received — \"${text.length > 80 ? "${text.substring(0, 80)}..." : text}\"");
+        "TranscriptionCubit: transcript received — \"${text.length > 80 ? "${text.substring(0, 80)}..." : text}\"",
+      );
       final next = state.withNewTranscript(text);
       if (!isClosed) emit(next);
       await _persist(next);
@@ -168,14 +171,17 @@ class TranscriptionCubit extends Cubit<TranscriptionState> {
       _failCounts[file.path] = fails;
       if (fails >= 3) {
         debugPrint(
-            "TranscriptionCubit: giving up on ${file.uri.pathSegments.last} after $fails failures — deleting");
+          "TranscriptionCubit: giving up on ${file.uri.pathSegments.last} after $fails failures — deleting",
+        );
         if (file.existsSync()) file.deleteSync();
         _failCounts.remove(file.path);
-        if (!isClosed)
+        if (!isClosed) {
           emit(state.copyWith(isUploading: false, lastError: null));
+        }
       } else {
         debugPrint(
-            "TranscriptionCubit: upload failed ($fails/3) — will retry: $e");
+          "TranscriptionCubit: upload failed ($fails/3) — will retry: $e",
+        );
         if (!isClosed) {
           emit(
             state.copyWith(
