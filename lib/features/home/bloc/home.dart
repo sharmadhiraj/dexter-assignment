@@ -1,79 +1,75 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:dexter_assignment/features/home/data/transcript_request.dart';
-import 'package:dexter_assignment/features/home/data/transcript_response.dart';
 import 'package:dexter_assignment/features/home/repo/home.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path_provider/path_provider.dart';
 
-class HomeState {
-  final int apiCallCount;
+class TranscriptionState {
+  final int uploadCount;
   final List<String> transcripts;
 
-  HomeState({
-    this.apiCallCount = 0,
+  const TranscriptionState({
+    this.uploadCount = 0,
     this.transcripts = const [],
   });
 
-  HomeState updateState(String transcript) {
-    final updated = List<String>.from(transcripts);
-    if (updated.length >= 3) updated.removeAt(0);
-    return HomeState(
-      apiCallCount: apiCallCount + 1,
-      transcripts: [...updated, transcript],
+  TranscriptionState withNewTranscript(String text) {
+    final trimmed = transcripts.length >= 3
+        ? transcripts.sublist(1)
+        : List<String>.from(transcripts);
+    return TranscriptionState(
+      uploadCount: uploadCount + 1,
+      transcripts: [...trimmed, text],
     );
   }
 }
 
-class HomeCubit extends Cubit<HomeState> {
-  HomeCubit() : super(HomeState());
+class TranscriptionCubit extends Cubit<TranscriptionState> {
+  TranscriptionCubit() : super(const TranscriptionState());
 
-  Timer? _timer;
+  Timer? _pollTimer;
 
-  void init() {
-    _timer = Timer.periodic(
+  void startPolling() {
+    _pollTimer = Timer.periodic(
       const Duration(seconds: 3),
-      (Timer timer) async {
-        final File? file = await _getFileToUpload();
-        if (file != null) {
-          await _uploadAudioFile(file);
-        }
-      },
+      (_) => _processNextFile(),
     );
   }
 
   @override
   Future<void> close() {
-    _timer?.cancel();
+    _pollTimer?.cancel();
     return super.close();
   }
 
-  Future<File?> _getFileToUpload() async {
-    try {
-      Directory appDocDir = await getApplicationSupportDirectory();
-      final List<File> entities = appDocDir
-          .listSync()
-          .whereType<File>()
-          .where((element) => element.path.contains("final_"))
-          .toList();
-      debugPrint("${entities.length} files to upload.");
-      return entities.firstOrNull;
-    } catch (e) {
-      debugPrint("Error _getFileToUpload : $e");
-    }
-    return null;
+  Future<void> _processNextFile() async {
+    final file = await _nextPendingFile();
+    if (file != null) await _transcribeAndEmit(file);
   }
 
-  Future<void> _uploadAudioFile(File file) async {
+  Future<File?> _nextPendingFile() async {
     try {
-      final TranscriptResponse response =
-          await HomeRepo.uploadAudioFile(TranscriptRequest(file.path));
-      if (!isClosed) emit(state.updateState(response.transcript));
+      final dir = await getApplicationSupportDirectory();
+      return dir
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.contains("final_"))
+          .firstOrNull;
+    } catch (e) {
+      debugPrint("TranscriptionCubit: failed to scan directory: $e");
+      return null;
+    }
+  }
+
+  Future<void> _transcribeAndEmit(File file) async {
+    try {
+      final transcript = await TranscriptionRepository.upload(file.path);
+      if (!isClosed) emit(state.withNewTranscript(transcript.text));
       if (file.existsSync()) file.deleteSync();
     } catch (e) {
-      debugPrint("Error _uploadAudioFile : $e");
+      debugPrint("TranscriptionCubit: upload failed: $e");
     }
   }
 }

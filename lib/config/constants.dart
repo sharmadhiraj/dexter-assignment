@@ -1,11 +1,7 @@
-import 'package:flutter/material.dart';
-
-class Constant {
+class AppConfig {
   static const String appName = "Dexter";
-  static const Color primaryColor = Colors.teal;
-  static const String channelName =
+  static const String nativeChannelName =
       "com.sharmadhiraj.always_listening_service/data";
-
   // TODO: move to a secure secret store or --dart-define before production
   static const String apiToken = "KsJ5Ag3";
   static const String sttApiUrl =

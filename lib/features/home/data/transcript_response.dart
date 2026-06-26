@@ -1,9 +1,9 @@
-class TranscriptResponse {
-  final String transcript;
+class Transcript {
+  final String text;
 
-  TranscriptResponse(this.transcript);
+  const Transcript(this.text);
 
-  factory TranscriptResponse.fromJson(Map<String, dynamic> json) {
-    return TranscriptResponse(json["transcription"] ?? "");
+  factory Transcript.fromJson(Map<String, dynamic> json) {
+    return Transcript(json["transcription"] ?? "");
   }
 }

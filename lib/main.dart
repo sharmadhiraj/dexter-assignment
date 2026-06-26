@@ -1,3 +1,4 @@
+import 'package:dexter_assignment/config/app_theme.dart';
 import 'package:dexter_assignment/config/constants.dart';
 import 'package:dexter_assignment/features/home/bloc/home.dart';
 import 'package:dexter_assignment/features/home/presentation/home.dart';
@@ -7,45 +8,30 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  _initMethodChannel();
-  runApp(const DexterAssignmentApp());
+  _startNativeService();
+  runApp(const DexterApp());
 }
 
-void _initMethodChannel() {
+void _startNativeService() {
+  const channel = MethodChannel(AppConfig.nativeChannelName);
   Future.delayed(
-    const Duration(milliseconds: 1000),
-    () {
-      const MethodChannel methodChannel = MethodChannel(Constant.channelName);
-      Future.delayed(
-        const Duration(milliseconds: 500),
-        () => methodChannel.invokeMethod("startService"),
-      );
-    },
+    const Duration(milliseconds: 1500),
+    () => channel.invokeMethod("startService"),
   );
 }
 
-class DexterAssignmentApp extends StatelessWidget {
-  const DexterAssignmentApp({super.key});
+class DexterApp extends StatelessWidget {
+  const DexterApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => HomeCubit()..init()),
-      ],
+    return BlocProvider(
+      create: (_) => TranscriptionCubit()..startPolling(),
       child: MaterialApp(
-        title: Constant.appName,
-        theme: _buildThemeData(context),
+        title: AppConfig.appName,
+        theme: buildAppTheme(),
         home: const HomeScreen(),
       ),
-    );
-  }
-
-  ThemeData _buildThemeData(BuildContext context) {
-    return ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: Constant.primaryColor),
-      primaryColor: Constant.primaryColor,
-      useMaterial3: true,
     );
   }
 }
