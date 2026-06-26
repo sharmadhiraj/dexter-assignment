@@ -4,6 +4,6 @@ class Transcript {
   const Transcript(this.text);
 
   factory Transcript.fromJson(Map<String, dynamic> json) {
-    return Transcript(json["transcription"] ?? "");
+    return Transcript(json["text"] ?? "");
   }
 }

@@ -26,7 +26,7 @@ class DexterApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => TranscriptionCubit()..startPolling(),
+      create: (_) => TranscriptionCubit()..init(),
       child: MaterialApp(
         title: AppConfig.appName,
         theme: buildAppTheme(),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dexter_assignment/config/app_theme.dart';
 import 'package:flutter/material.dart';
 
@@ -13,10 +15,18 @@ class _ListeningBannerState extends State<ListeningBanner>
   late final AnimationController _controller;
   late final Animation<double> _scale;
   late final Animation<double> _opacity;
+  late final DateTime _sessionStart;
+  late final Timer _clockTimer;
+  Duration _elapsed = Duration.zero;
 
   @override
   void initState() {
     super.initState();
+    _sessionStart = DateTime.now();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted)
+        setState(() => _elapsed = DateTime.now().difference(_sessionStart));
+    });
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -31,8 +41,15 @@ class _ListeningBannerState extends State<ListeningBanner>
 
   @override
   void dispose() {
+    _clockTimer.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  String _formatElapsed(Duration d) {
+    if (d.inHours > 0) return "${d.inHours}h ${d.inMinutes.remainder(60)}m";
+    if (d.inMinutes > 0) return "${d.inMinutes}m ${d.inSeconds.remainder(60)}s";
+    return "${d.inSeconds}s";
   }
 
   @override
@@ -47,11 +64,11 @@ class _ListeningBannerState extends State<ListeningBanner>
         children: [
           _PulsingMicIcon(scale: _scale, opacity: _opacity),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   "Always Listening",
                   style: TextStyle(
                     color: Colors.white,
@@ -60,10 +77,10 @@ class _ListeningBannerState extends State<ListeningBanner>
                     height: 1.2,
                   ),
                 ),
-                SizedBox(height: 3),
+                const SizedBox(height: 3),
                 Text(
-                  "Audio sent to STT every 10 s",
-                  style: TextStyle(
+                  "Listening for ${_formatElapsed(_elapsed)}",
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
                     height: 1.2,

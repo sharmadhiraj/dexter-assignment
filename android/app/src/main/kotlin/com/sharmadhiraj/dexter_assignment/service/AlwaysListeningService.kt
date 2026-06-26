@@ -22,13 +22,13 @@ import java.nio.ByteOrder
 
 class AlwaysListeningService : Service() {
 
-    private val sampleRate = 44100
-    private val channelConfig = AudioFormat.CHANNEL_IN_STEREO
-    private val channelCount = 2
+    private val sampleRate = 16000
+    private val channelConfig = AudioFormat.CHANNEL_IN_MONO
+    private val channelCount = 1
     private val audioEncoding = AudioFormat.ENCODING_PCM_16BIT
     private val bitsPerSample = 16
     private val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioEncoding)
-    private val chunkDurationMs = 5500L
+    private val chunkDurationMs = 10000L
     private val rawAudioFileName = "temp_record.raw"
 
     private var recorder: AudioRecord? = null
@@ -78,6 +78,7 @@ class AlwaysListeningService : Service() {
             recorder!!.startRecording()
             isRecording = true
             recordingThread = Thread(::streamAudioToFile).also { it.start() }
+            Log.d(TAG, "Chunk recording started (${chunkDurationMs}ms, ${sampleRate}Hz mono)")
             chunkHandler.postDelayed({ finalizeChunk(andStartNext = true) }, chunkDurationMs)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start recording: $e")
@@ -101,6 +102,7 @@ class AlwaysListeningService : Service() {
         val wavPath = appFilePath("final_${System.currentTimeMillis()}.wav")
         convertRawToWav(rawPath, wavPath)
         File(rawPath).delete()
+        Log.d(TAG, "WAV saved: ${wavPath.substringAfterLast('/')}")
 
         if (andStartNext) startNewChunk()
         else chunkHandler.removeCallbacksAndMessages(null)

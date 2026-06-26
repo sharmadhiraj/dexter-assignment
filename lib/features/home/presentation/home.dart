@@ -1,5 +1,6 @@
 import 'package:dexter_assignment/config/app_theme.dart';
 import 'package:dexter_assignment/features/home/bloc/home.dart';
+import 'package:dexter_assignment/features/home/data/transcript_entry.dart';
 import 'package:dexter_assignment/features/home/presentation/widgets/listening_banner.dart';
 import 'package:dexter_assignment/features/home/presentation/widgets/transcript_card.dart';
 import 'package:flutter/material.dart';
@@ -19,7 +20,12 @@ class HomeScreen extends StatelessWidget {
           children: [
             const ListeningBanner(),
             const SizedBox(height: 12),
-            _ApiCallCard(count: state.uploadCount),
+            _ApiCallCard(
+                count: state.uploadCount, isUploading: state.isUploading),
+            if (state.lastError != null) ...[
+              const SizedBox(height: 8),
+              _ErrorRow(message: state.lastError!),
+            ],
             const SizedBox(height: 28),
             _TranscriptsSection(transcripts: state.transcripts),
           ],
@@ -93,8 +99,9 @@ class _UserInfo extends StatelessWidget {
 
 class _ApiCallCard extends StatelessWidget {
   final int count;
+  final bool isUploading;
 
-  const _ApiCallCard({required this.count});
+  const _ApiCallCard({required this.count, required this.isUploading});
 
   @override
   Widget build(BuildContext context) {
@@ -114,8 +121,11 @@ class _ApiCallCard extends StatelessWidget {
               color: AppColors.tealLight,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.swap_vert_rounded,
-                color: AppColors.teal, size: 20),
+            child: const Icon(
+              Icons.swap_vert_rounded,
+              color: AppColors.teal,
+              size: 20,
+            ),
           ),
           const SizedBox(width: 14),
           const Text(
@@ -123,6 +133,19 @@ class _ApiCallCard extends StatelessWidget {
             style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
           const Spacer(),
+          AnimatedOpacity(
+            opacity: isUploading ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            child: const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.teal),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
           Text(
             "$count",
             style: const TextStyle(
@@ -137,8 +160,28 @@ class _ApiCallCard extends StatelessWidget {
   }
 }
 
+class _ErrorRow extends StatelessWidget {
+  final String message;
+
+  const _ErrorRow({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(Icons.error_outline_rounded, size: 14, color: Colors.red.shade400),
+        const SizedBox(width: 6),
+        Text(
+          message,
+          style: TextStyle(fontSize: 12, color: Colors.red.shade400),
+        ),
+      ],
+    );
+  }
+}
+
 class _TranscriptsSection extends StatelessWidget {
-  final List<String> transcripts;
+  final List<TranscriptEntry> transcripts;
 
   const _TranscriptsSection({required this.transcripts});
 
@@ -161,7 +204,7 @@ class _TranscriptsSection extends StatelessWidget {
           const _EmptyTranscripts()
         else
           ...transcripts.reversed.toList().asMap().entries.map(
-                (e) => TranscriptCard(text: e.value, isLatest: e.key == 0),
+                (e) => TranscriptCard(entry: e.value, isLatest: e.key == 0),
               ),
       ],
     );
@@ -183,8 +226,11 @@ class _EmptyTranscripts extends StatelessWidget {
       ),
       child: const Column(
         children: [
-          Icon(Icons.graphic_eq_rounded,
-              color: AppColors.iconDisabled, size: 32),
+          Icon(
+            Icons.graphic_eq_rounded,
+            color: AppColors.iconDisabled,
+            size: 32,
+          ),
           SizedBox(height: 10),
           Text(
             "Waiting for transcripts",

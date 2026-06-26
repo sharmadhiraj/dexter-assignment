@@ -8,6 +8,7 @@ class SttApiClient {
     final request =
         http.MultipartRequest("POST", Uri.parse(AppConfig.sttApiUrl))
           ..headers["Authorization"] = "Bearer ${AppConfig.apiToken}"
+          ..fields["model"] = AppConfig.sttModel
           ..files.add(await http.MultipartFile.fromPath("file", filePath));
 
     final response = await request.send();
